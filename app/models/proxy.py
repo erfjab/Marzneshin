@@ -92,22 +92,35 @@ class InboundHost(BaseModel):
 
     @field_validator("port")
     @classmethod
-    def validate_port(cls, v: str) -> str:
-        if v is not None:
-            for port_range in v.split(","):
-                ports = port_range.split("-")
-                if not (0 < len(ports) < 3):
-                    raise ValueError("Invalid port pattern")
-                for port in ports:
-                    if not int(port) < 65535:
-                        raise ValueError("invalid port specified in the range")
-                if len(ports) == 2:
-                    if int(ports[0]) > int(ports[1]):
-                        raise ValueError(
-                            "The first port must be less than or equal to the second port"
-                        )
+    def validate_port(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+
+        for port_range in v.split(","):
+            ports = port_range.split("-")
+            cls._validate_port_range_length(ports)
+            cls._validate_ports(ports)
+            cls._validate_port_order(ports)
 
         return v
+
+    @classmethod
+    def _validate_port_range_length(cls, ports: list) -> None:
+        if not (1 <= len(ports) <= 2):
+            raise ValueError("Invalid port pattern")
+
+    @classmethod
+    def _validate_ports(cls, ports: list) -> None:
+        for port in ports:
+            if not (0 < int(port) < 65536):
+                raise ValueError("Invalid port specified in the range")
+
+    @classmethod
+    def _validate_port_order(cls, ports: list) -> None:
+        if len(ports) == 2 and int(ports[0]) > int(ports[1]):
+            raise ValueError(
+                "The first port must be less than or equal to the second port"
+            )
 
     @field_validator("alpn", mode="before")
     @classmethod
